@@ -21,8 +21,9 @@ pub struct Flow {
 pub struct Ipv4Prefix {
     pub ip_address: u32,
     pub prefix: u8,
-    mask: u32, /* min_address: u32,
-                * max_address: u32, */
+    mask: u32,
+    /* min_address: u32,
+                   * max_address: u32, */
 }
 
 impl Ipv4Prefix {
@@ -83,10 +84,29 @@ impl Flow {
             &mut bytes[(port_start + 2)..(port_start + 4)],
             self.dst_port,
         );
+
+        let proto = bytes[9];
+
+
+        let l4csum_start = match bytes[9] {
+            6 => Some(16),
+            17 => Some(6),
+            _ => None
+        }.and_then(|o| Some(port_start + o));
+
+        if let Some(l4csum_start) = l4csum_start {
+            BigEndian::write_u16(&mut bytes[l4csum_start..l4csum_start + 2], 0);
+        }
+
         BigEndian::write_u16(&mut bytes[10..12], 0);
-        let csum = ipcsum(bytes);
-        BigEndian::write_u16(&mut bytes[10..12], csum);
-        // FIXME: l4 cksum
+
+        let ipcsum = ipcsum(bytes);
+
+        if let Some(l4csum_start) = l4csum_start {
+            let l4csum = l4csum(bytes, &bytes[port_start..]);
+            BigEndian::write_u16(&mut bytes[l4csum_start..l4csum_start + 2], l4csum);
+        }
+        BigEndian::write_u16(&mut bytes[10..12], ipcsum);
     }
 }
 
@@ -131,4 +151,9 @@ fn flow_as_u8(flow: &Flow) -> &[u8] {
 #[inline]
 fn ipcsum(payload: &[u8]) -> u16 {
     unsafe { ipv4_cksum(payload.as_ptr()) }
+}
+
+#[inline]
+fn l4csum(payload: &[u8], l4h: &[u8]) -> u16 {
+    unsafe { ipv4_udptcp_cksum(payload.as_ptr(), l4h.as_ptr()) }
 }

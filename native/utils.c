@@ -11,3 +11,7 @@ uint32_t crc_hash_native(const void* data, uint32_t len, uint32_t initial) {
 uint16_t ipv4_cksum(const void* iphdr) {
     return rte_ipv4_cksum((const struct ipv4_hdr*)iphdr);
 }
+
+uint16_t ipv4_udptcp_cksum(const void* iphdr, const void* l4_hdr) {
+    return rte_ipv4_udptcp_cksum((const struct ipv4_hdr*)iphdr, l4_hdr);
+}
