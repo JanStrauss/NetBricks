@@ -1,3 +1,8 @@
+use headers::*;
+use interface::*;
+use operators::transform_batch_state::TransformStateBatch;
+use operators::transform_batch_state::TransformStateFn;
+use scheduler::Scheduler;
 use self::act::Act;
 pub use self::add_metadata::AddMetadataBatch;
 use self::add_metadata::MetadataFn;
@@ -19,9 +24,9 @@ pub use self::restore_header::*;
 pub use self::send_batch::SendBatch;
 pub use self::transform_batch::TransformBatch;
 use self::transform_batch::TransformFn;
-use headers::*;
-use interface::*;
-use scheduler::Scheduler;
+use std::borrow::Borrow;
+use std::sync::Arc;
+use operators::transform_batch_state::ExtractorFn;
 
 #[macro_use]
 mod macros;
@@ -40,6 +45,7 @@ mod receive_batch;
 mod reset_parse;
 mod send_batch;
 mod transform_batch;
+mod transform_batch_state;
 mod restore_header;
 mod add_metadata;
 mod add_metadata_mut;
@@ -110,6 +116,14 @@ pub trait Batch: BatchIterator + Act + Send {
         Self: Sized,
     {
         TransformBatch::<Self::Header, Self>::new(self, transformer)
+    }
+
+    fn transform_batch_state<S>(self, extractor: ExtractorFn<S>, transformer: TransformStateFn<Self::Header,Self::Metadata, S> ) -> TransformStateBatch<Self::Header, Self, S>
+        where
+            Self: Sized,
+            S: Send
+    {
+        TransformStateBatch::<Self::Header, Self, S>::new(self, transformer, extractor)
     }
 
     /// Map over a set of header fields. Map and transform primarily differ in map being immutable. Immutability
