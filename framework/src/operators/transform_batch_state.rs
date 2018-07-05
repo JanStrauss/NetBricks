@@ -9,53 +9,44 @@ use super::Batch;
 use super::iterator::*;
 use super::packet_batch::PacketBatch;
 
-pub type TransformStateFn<T, M, S> = Box<FnMut(&mut Packet<T, M>, &mut S) + Send>;
-pub type ExtractorFn<S> = Box<FnMut() -> S + Send>;
+pub type TransformStateFn<T, M, V> = Box<FnMut(PayloadEnumerator<T, M>, &mut V) + Send>;
 
-pub struct TransformStateBatch<T, V, S>
+pub struct TransformStateBatch<T, V>
     where
         T: EndOffset,
         V: Batch + BatchIterator<Header=T> + Act,
-        S: Send
 {
     parent: V,
-    transformer: TransformStateFn<T, V::Metadata, S>,
-    extractor: ExtractorFn<S>,
+    transformer: TransformStateFn<T, V::Metadata, V>,
     applied: bool,
     phantom_t: PhantomData<T>,
 }
 
-impl<T, V, S> TransformStateBatch<T, V, S>
+impl<T, V> TransformStateBatch<T, V>
     where
         T: EndOffset,
         V: Batch + BatchIterator<Header=T> + Act,
-        S: Send
 {
-    pub fn new(parent: V,
-               transformer: TransformStateFn<T, V::Metadata, S>,
-               extractor: ExtractorFn<S>) -> TransformStateBatch<T, V, S> {
+    pub fn new(parent: V, transformer: TransformStateFn<T, V::Metadata, V>) -> TransformStateBatch<T, V> {
         TransformStateBatch {
             parent: parent,
             transformer: transformer,
-            extractor: extractor,
             applied: false,
             phantom_t: PhantomData,
         }
     }
 }
 
-impl<T, V, S> Batch for TransformStateBatch<T, V, S>
+impl<T, V> Batch for TransformStateBatch<T, V>
     where
         T: EndOffset,
         V: Batch + BatchIterator<Header=T> + Act,
-        S: Send
 {}
 
-impl<T, V, S> BatchIterator for TransformStateBatch<T, V, S>
+impl<T, V> BatchIterator for TransformStateBatch<T, V>
     where
         T: EndOffset,
         V: Batch + BatchIterator<Header=T> + Act,
-        S: Send
 
 {
     type Header = T;
@@ -71,22 +62,18 @@ impl<T, V, S> BatchIterator for TransformStateBatch<T, V, S>
     }
 }
 
-impl<T, V, S> Act for TransformStateBatch<T, V, S>
+impl<T, V> Act for TransformStateBatch<T, V>
     where
         T: EndOffset,
         V: Batch + BatchIterator<Header=T> + Act,
-        S: Send
 {
     #[inline]
     fn act(&mut self) {
         if !self.applied {
             self.parent.act();
-            let mut s = (self.extractor)();
             {
                 let iter = PayloadEnumerator::<T, V::Metadata>::new(&mut self.parent);
-                while let Some(ParsedDescriptor { mut packet, .. }) = iter.next(&mut self.parent) {
-                    (self.transformer)(&mut packet, &mut s);
-                }
+                (self.transformer)(iter, &mut self.parent);
             }
             self.applied = true;
         }
@@ -128,3 +115,4 @@ impl<T, V, S> Act for TransformStateBatch<T, V, S>
         self.parent.get_task_dependencies()
     }
 }
+

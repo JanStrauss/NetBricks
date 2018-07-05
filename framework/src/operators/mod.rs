@@ -26,8 +26,7 @@ pub use self::transform_batch::TransformBatch;
 use self::transform_batch::TransformFn;
 use std::borrow::Borrow;
 use std::sync::Arc;
-use operators::transform_batch_state::ExtractorFn;
-
+pub use self::iterator::ParsedDescriptor;
 #[macro_use]
 mod macros;
 
@@ -118,12 +117,11 @@ pub trait Batch: BatchIterator + Act + Send {
         TransformBatch::<Self::Header, Self>::new(self, transformer)
     }
 
-    fn transform_batch_state<S>(self, extractor: ExtractorFn<S>, transformer: TransformStateFn<Self::Header,Self::Metadata, S> ) -> TransformStateBatch<Self::Header, Self, S>
+    fn transform_batch_state(self, transformer: TransformStateFn<Self::Header, Self::Metadata, Self> ) -> TransformStateBatch<Self::Header, Self>
         where
-            Self: Sized,
-            S: Send
+            Self: Sized
     {
-        TransformStateBatch::<Self::Header, Self, S>::new(self, transformer, extractor)
+        TransformStateBatch::<Self::Header, Self>::new(self, transformer)
     }
 
     /// Map over a set of header fields. Map and transform primarily differ in map being immutable. Immutability
