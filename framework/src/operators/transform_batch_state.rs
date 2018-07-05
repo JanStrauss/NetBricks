@@ -73,10 +73,11 @@ impl<T, V> Act for TransformStateBatch<T, V>
             self.parent.act();
             {
                 let iter = PayloadEnumerator::<T, V::Metadata>::new(&mut self.parent);
-                if let Some(drop) = (self.transformer)(iter, &mut self.parent){
-                    self.parent.drop_packets(&drop).unwrap();
+                if let Some(drop) = (self.transformer)(iter, &mut self.parent) {
+                    if !drop.is_empty() {
+                        self.parent.drop_packets(&drop[..]).expect("transform patch drop err");
+                    }
                 }
-
             }
             self.applied = true;
         }
