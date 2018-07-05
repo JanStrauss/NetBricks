@@ -9,7 +9,7 @@ use super::Batch;
 use super::iterator::*;
 use super::packet_batch::PacketBatch;
 
-pub type TransformStateFn<T, M, V> = Box<FnMut(PayloadEnumerator<T, M>, &mut V) + Send>;
+pub type TransformStateFn<T, M, V> = Box<FnMut(PayloadEnumerator<T, M>, &mut V) -> Option<Vec<usize>> + Send>;
 
 pub struct TransformStateBatch<T, V>
     where
@@ -73,7 +73,10 @@ impl<T, V> Act for TransformStateBatch<T, V>
             self.parent.act();
             {
                 let iter = PayloadEnumerator::<T, V::Metadata>::new(&mut self.parent);
-                (self.transformer)(iter, &mut self.parent);
+                if let Some(drop) = (self.transformer)(iter, &mut self.parent){
+                    self.parent.drop_packets(&drop).unwrap();
+                }
+
             }
             self.applied = true;
         }
