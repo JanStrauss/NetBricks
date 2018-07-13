@@ -1,10 +1,10 @@
-use super::Batch;
-use super::act::Act;
-use super::iterator::*;
-use super::packet_batch::PacketBatch;
 use common::*;
 use headers::NullHeader;
 use interface::{PacketRx, PacketTx};
+use super::act::Act;
+use super::Batch;
+use super::iterator::*;
+use super::packet_batch::PacketBatch;
 
 pub struct ReceiveBatch<T: PacketRx> {
     parent: PacketBatch,
@@ -23,7 +23,7 @@ impl<T: PacketRx> ReceiveBatch<T> {
 
     pub fn new(queue: T) -> ReceiveBatch<T> {
         ReceiveBatch {
-            parent: PacketBatch::new(64),
+            parent: PacketBatch::new(32),
             queue: queue,
             received: 0,
         }
