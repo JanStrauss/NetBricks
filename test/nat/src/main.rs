@@ -1,4 +1,5 @@
 #![feature(box_syntax)]
+#![feature(assoc_unix_epoch)]
 extern crate e2d2;
 extern crate fnv;
 extern crate getopts;
@@ -16,7 +17,7 @@ use std::net::Ipv4Addr;
 use std::process;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 mod nf;
 
@@ -65,7 +66,10 @@ fn main() {
             let run_start = time::precise_time_s();
             let mut start = time::precise_time_ns() as f64 / CONVERSION_FACTOR;
             let sleep_time = Duration::from_millis(50);
-            println!("start: {}", run_start);
+
+            let d = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+            println!("start: {}.{}", d.as_secs(), d.subsec_millis());
+
             loop {
                 let now = time::precise_time_ns() as f64 / CONVERSION_FACTOR;
                 if now - start > 0.1 {
