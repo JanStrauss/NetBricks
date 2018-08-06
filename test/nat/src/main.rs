@@ -65,6 +65,7 @@ fn main() {
             let run_start = time::precise_time_s();
             let mut start = time::precise_time_ns() as f64 / CONVERSION_FACTOR;
             let sleep_time = Duration::from_millis(50);
+            println!("start: {}", run_start);
             loop {
                 let now = time::precise_time_ns() as f64 / CONVERSION_FACTOR;
                 if now - start > 0.1 {
